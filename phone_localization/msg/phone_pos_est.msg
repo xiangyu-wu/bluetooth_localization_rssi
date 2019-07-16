@@ -1,0 +1,9 @@
+Header header
+string name
+string address
+string category
+float32 est_posx
+float32 est_posy
+float32 est_posz
+float32 rssi
+float32 maxrssi
