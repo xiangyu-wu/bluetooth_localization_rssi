@@ -1,4 +1,6 @@
 # bluetooth_localization
+Please contact Xiangyu Wu if you have trouble with this Repo. Phone: (510)3651730  Email: wuxiangyu@berkeley.edu
+
 This Repo contains a ROS package -- **phone_localization**, which uses bluetooth RSSI to localize phones. There is only one ROS node in the package -- **phonePosEst**. The ROS node searchs for nearby bluetooth devices and gets their RSSI value, at a custom specified frequency (maximum posible rate is about 800Hz, the default rate is 50Hz). It subscribes to the position message of the vehicle and publishes the name, category (phone, laptop, ect.), address, RSSI and estimated position of each detected phones. The position of the phone is estimated to be the centroid of the vehicle's positions with the largest RSSI value.
 
 # 1-download this Repo
