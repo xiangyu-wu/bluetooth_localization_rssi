@@ -13,8 +13,8 @@ The PyBluez module allows Python code to access the host machine's Bluetooth res
 # 4-install the bluetooth-proximity module
 The bluetooth-proximity module is used for getting the RSSI value of a Bluetooth device by address. Do a small modification and install it by:
 * `git clone https://github.com/ewenchou/bluetooth-proximity.git`
-* `cd bluetooth-proximity`
 *  replace the file /bt_proximity/bt_rssi.py with the bt_rssi.py file in the bluetooth_localization Repo (the repo with this README)
+* `cd bluetooth-proximity`
 * `sudo python setup.py install`
 
 # 5-setup the workspace 
@@ -29,8 +29,8 @@ Make the python script executable by:
 `chmod +x ~/bluetooth_ws/src/phone_localization/src/phonePosEst.py`
 
 
-# 6-Set parameters and compile the codes
-Get the address of the installed bluetooth modules using `bluetoothctl`. The address is a unique identifier of a bluetooth module. Change the bluetoothModuleAddr in **phonePosEst.py** to the address of the bluetooth module you want to use. If you are unable to distinguish which address correponds to the plugable bluetooth dongle, just unplug it, run `bluetoothctl` again and see which device disappears.
+# 6-set parameters and compile the codes
+Plug the usb bluetooth dongle to the NUC. Get the address of the installed bluetooth modules using `bluetoothctl`. The address is a unique identifier of a bluetooth module. Change the bluetoothModuleAddr in **phonePosEst.py** to the address of the bluetooth module you want to use. If you are unable to distinguish which address correponds to the bluetooth dongle, just unplug it, run `bluetoothctl` again and see which device disappears.
 
 In addition, in **phone_localization.launch**, please change the parameter named **vehicle_pos_topic_type** to the type of the position estimation message of the vehicle, and also change the **vehicle_pos_topic_name** to the name of that topic.  
 
@@ -38,14 +38,12 @@ Compile the code:
 * `cd ~/bluetooth_ws/`
 * `catkin_make`
 
-# 7-Run the codes 
-Run the ROS node by:
+# 7-run the codes 
+Turn on the bluetooth of both the NUC and the phones whose position needs to be estimated. Run the ROS node by:
 * `cd ~/bluetooth_ws`
 * `source /devel/setup.bash`
 * `roslaunch phone_localization phone_localization.launch`
 
-
-
-
-
-
+# 8-analyze the recorded ROS bag file
+First the recorded bag file to a pickle file by running
+* `python convertToPickle.py NAME_OF_THE_BAG_FILE`
