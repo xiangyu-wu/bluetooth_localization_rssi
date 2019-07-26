@@ -43,7 +43,7 @@ Compile the code:
 # 7-run the codes 
 Turn on the bluetooth of both the NUC and the phones whose position need to be estimated. Run the ROS node by:
 * `cd ~/bluetooth_ws`
-* `source /devel/setup.bash`
+* `source devel/setup.bash`
 * `roslaunch phone_localization phone_localization.launch`
 
 # 8-analyze the recorded ROS bag file
