@@ -32,20 +32,24 @@ Plot RSSI and position estimation of a specific bluetooth device.
 Specified by "deviceAddr".
 '''
 plot = plt.figure()
-plot.add_subplot(2, 1, 1)
-plot.add_subplot(2, 1, 2, sharex=plot.axes[0])
+plot.add_subplot(3, 1, 1)
+plot.add_subplot(3, 1, 2, sharex=plot.axes[0])
+plot.add_subplot(3, 1, 3, sharex=plot.axes[0])
 
 index = btEstData['address']==deviceAddr
  
-plot.axes[0].plot(btEstData['t'][index], btEstData['rssi'][index], 'b-')
+plot.axes[0].plot(btEstData['t'][index], btEstData['rssi'][index], 'b.-')
 plot.axes[0].set_ylabel('rssi value')
 
-plot.axes[1].plot(btEstData['t'][index], btEstData['est_posx'][index], 'r-', label='x')
-plot.axes[1].plot(btEstData['t'][index], btEstData['est_posy'][index], 'g-', label='y')
-plot.axes[1].plot(btEstData['t'][index], btEstData['est_posz'][index], 'b-', label='z')
-plot.axes[1].set_xlabel('time (s)')
+plot.axes[1].plot(btEstData['t'][index], btEstData['est_posx'][index], 'r.', label='x')
+plot.axes[1].plot(btEstData['t'][index], btEstData['est_posy'][index], 'g.', label='y')
+plot.axes[1].plot(btEstData['t'][index], btEstData['est_posz'][index], 'b.', label='z')
 plot.axes[1].set_ylabel('position est (m)')
 plot.axes[1].legend()
+
+plot.axes[2].plot(btEstData['t'][index], btEstData['rssi_status'][index], 'b.')
+plot.axes[2].set_ylabel('rssi status (debug value)')
+plot.axes[2].set_xlabel('time (s)')
 
 finalEstPos = np.asarray([btEstData['est_posx'][index][-1], 
                           btEstData['est_posy'][index][-1], btEstData['est_posz'][index][-1]])
