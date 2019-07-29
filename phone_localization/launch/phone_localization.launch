@@ -1,5 +1,5 @@
 <launch>
-    <node name="phonePosEst" pkg="phone_localization" type="phonePosEst.py"/>
+    <node name="phonePosEst" pkg="phone_localization" type="phonePosEst.py" output="screen"/>
     <param name="vehicle_pos_topic_type" type="str" value="geometry_msgs/PoseStamped" />
     <param name="vehicle_pos_topic_name" type="str" value="msf_core/odometry" />
 </launch>

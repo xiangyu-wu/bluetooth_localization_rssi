@@ -29,7 +29,8 @@ class phonePositionEstimate:
     def __init__(self, BTname, BTaddress, BTclass, btModuleAddr):
         #info about estimated phone position
         self.cumPos = np.array([0.0, 0.0, 0.0], dtype=np.float32)
-        self.maxRSSI = -np.inf 
+        self.maxRSSI = -np.inf
+        self.statusRSSI = 0
         self.currentRSSI = -np.inf
         self.dataNum = 0
         #some properties about the bluetooth device
@@ -42,11 +43,22 @@ class phonePositionEstimate:
         
     def updatePhonePosition(self):
         #get the current RSSI of BT device
-        self.currentRSSI = self.btrssi.get_rssi()
+        infoRSSI = self.btrssi.get_rssi()
         
-        if self.currentRSSI == None:
-            #phone not visible, nothing to do.
+        #For error code definition, please refer to bluetooth core specifications
+        if infoRSSI == None:
+            #phone not visible
+            self.statusRSSI = 8 #bluetooth connection failure error code
+            self.currentRSSI = -np.inf #if fail, make current RSSI -inf
             return False
+        elif infoRSSI[0] != 0:
+            #having error getting RSSI
+            self.statusRSSI = infoRSSI[0]
+            self.currentRSSI = -np.inf
+            return False
+        else:
+            self.statusRSSI = infoRSSI[0]
+            self.currentRSSI = infoRSSI[1]
         
         if self.currentRSSI == self.maxRSSI:
             self.cumPos = self.cumPos + currentVehiclePosition
@@ -111,6 +123,8 @@ while not rospy.is_shutdown():
         
         #add devices found to the current device list
         for addr, name, device_class in nearby_devices:
+            rospy.loginfo('discovered:')
+            rospy.loginfo(name)
             major_class = (device_class >> 8) & 0xf
             if major_class < 7:
                 category = major_classes[major_class]
@@ -124,6 +138,7 @@ while not rospy.is_shutdown():
             #for i in range(len(allBTdeviceList)):
             for d in allBTdeviceList:
                 if d.BTaddress == addr:
+                    d.btrssi = BluetoothRSSI(addr, bluetoothModuleAddr) #restart getting RSSI
                     currentBTdeviceList.append(d)
                     foundPreviously = True
                     break
@@ -140,20 +155,25 @@ while not rospy.is_shutdown():
 
         #get the RSSI value of devices on the list
         for device in currentBTdeviceList:
-            #if the function returns true, it publishes the updated position
+            #if successfully got the RSSI, update last successful time
             if device.updatePhonePosition():
                 lastRSSITime = rospy.get_rostime()
                 
-                estPhonePosMsg.header.stamp = rospy.get_rostime()
-                estPhonePosMsg.name = device.BTname
-                estPhonePosMsg.address = device.BTaddress
-                estPhonePosMsg.category = device.BTclass
-                estPhonePosMsg.est_posx = device.cumPos[0]/device.dataNum
-                estPhonePosMsg.est_posy = device.cumPos[1]/device.dataNum
-                estPhonePosMsg.est_posz = device.cumPos[2]/device.dataNum
-                estPhonePosMsg.rssi = device.currentRSSI
-                estPhonePosMsg.maxrssi =  device.maxRSSI
-                estPosPublisher.publish(estPhonePosMsg)
+            estPhonePosMsg.header.stamp = rospy.get_rostime()
+            estPhonePosMsg.name = device.BTname
+            estPhonePosMsg.address = device.BTaddress
+            estPhonePosMsg.category = device.BTclass
+            estPhonePosMsg.est_posx = device.cumPos[0]/device.dataNum
+            estPhonePosMsg.est_posy = device.cumPos[1]/device.dataNum
+            estPhonePosMsg.est_posz = device.cumPos[2]/device.dataNum
+            estPhonePosMsg.rssi_status = device.statusRSSI
+            estPhonePosMsg.rssi = device.currentRSSI
+            estPhonePosMsg.maxrssi =  device.maxRSSI
+            
+            rospy.loginfo(estPhonePosMsg.name)
+            rospy.loginfo(estPhonePosMsg.rssi)
+            
+            estPosPublisher.publish(estPhonePosMsg)
             
 
         if (rospy.get_rostime()-lastRSSITime) > rospy.Duration(noDeviceTimeout):

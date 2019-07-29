@@ -5,5 +5,6 @@ string category
 float32 est_posx
 float32 est_posy
 float32 est_posz
+int8 rssi_status
 float32 rssi
 float32 maxrssi
