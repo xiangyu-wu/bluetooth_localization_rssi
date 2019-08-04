@@ -95,8 +95,6 @@ def deviceDiscovery(lock):
         
         #add devices found to the current device list
         for addr, name, device_class in nearby_devices:
-            rospy.loginfo('discovered:')
-            rospy.loginfo(name)
             major_class = (device_class >> 8) & 0xf
             if major_class < 7:
                 category = major_classes[major_class]
@@ -176,7 +174,6 @@ threadDeviceDiscovery.start()
 
 while not rospy.is_shutdown():
     
-    rospy.loginfo(currentBTdeviceList)
     if len(currentBTdeviceList) != 0:
         #get the RSSI value of devices on the list
         
@@ -201,10 +198,6 @@ while not rospy.is_shutdown():
             estPhonePosMsg.rssi_status = device.statusRSSI
             estPhonePosMsg.rssi = device.currentRSSI
             estPhonePosMsg.maxrssi =  device.maxRSSI
-            
-            rospy.loginfo(estPhonePosMsg.name)
-            rospy.loginfo(estPhonePosMsg.rssi)
-            rospy.loginfo(device.statusRSSI)
 
             estPosPublisher.publish(estPhonePosMsg)
             
