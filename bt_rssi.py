@@ -15,7 +15,7 @@ class BluetoothRSSI(object):
         self.hci_sock = bt.hci_open_dev(self.devID)
         self.hci_fd = self.hci_sock.fileno()
         self.bt_sock = bluetooth.BluetoothSocket(bluetooth.L2CAP)
-        self.bt_sock.settimeout(10)
+        self.bt_sock.settimeout(5)
         self.connected = False
         self.cmd_pkt = None
 

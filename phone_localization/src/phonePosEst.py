@@ -19,7 +19,7 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 ######################################################################
 bluetoothModuleAddr = "5C:F3:70:8A:38:B6" #the addrees of the bluetooth module to be used
 loopFrequency = 50 #[Hz] the frequency of the loop
-noDeviceTimeout = 2.0 #[s] time threshold for foggetting a bluetooth device
+noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 5  #[s] time for searching BT devices
 ######################################################################
 ######################################################################
