@@ -19,10 +19,22 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 ######################################################################
 bluetoothModuleAddr = "5C:F3:70:8A:38:B6" #the addrees of the bluetooth module to be used
 loopFrequency = 50 #[Hz] the frequency of the loop
-noDeviceTimeout = 2.0 #[s] time threshold for foggetting a bluetooth device
+noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 5  #[s] time for searching BT devices
 ######################################################################
 ######################################################################
+
+currentBTdeviceList = []
+allBTdeviceList = []
+major_classes = ( "Miscellaneous", 
+                  "Computer", 
+                  "Phone", 
+                  "LAN/Network Access point", 
+                  "Audio/Video", 
+                  "Peripheral", 
+                  "Imaging" )
+
+devID = bluetooth._bluetooth.hci_devid(bluetoothModuleAddr)
 
 
 class phonePositionEstimate:
@@ -33,6 +45,8 @@ class phonePositionEstimate:
         self.statusRSSI = 0
         self.currentRSSI = -np.inf
         self.dataNum = 0
+        self.lastRSSITime = rospy.get_rostime()
+        
         #some properties about the bluetooth device
         self.BTname = BTname
         self.BTaddress = BTaddress
@@ -71,8 +85,61 @@ class phonePositionEstimate:
             
         return True
 
+        
+def deviceDiscovery(lock):
+    while not rospy.is_shutdown():
+        #Search nearby bluetooth devices
+        nearby_devices = bluetooth.discover_devices(
+            duration=durationOfDiscoveryStep, lookup_names=True, flush_cache=True, 
+            lookup_class=True, device_id = devID)
+        
+        #add devices found to the current device list
+        for addr, name, device_class in nearby_devices:
+            major_class = (device_class >> 8) & 0xf
+            if major_class < 7:
+                category = major_classes[major_class]
+            else:
+                category = "Uncategorized"    
+                
+            #check if device found already in the current device list
+            inCurrentList = False
+            lock.acquire()
+            for d in currentBTdeviceList:
+                if d.BTaddress == addr:
+                    inCurrentList = True
+                    break
+            lock.release()
+            
+            if not inCurrentList:
+                #check whether that device was found before:
+                #if was found before, just add the corresponding pos estimation object
+                #back to the current list
+                foundPreviously = False
+                
+                for d in allBTdeviceList:
+                    if d.BTaddress == addr:
+                        d.btrssi = BluetoothRSSI(addr, bluetoothModuleAddr) #restart getting RSSI
+                        d.lastRSSITime = rospy.get_rostime() 
+                        d.updatePhonePosition() #reconnect to the phone and get its RSSI
+                        lock.acquire()
+                        currentBTdeviceList.append(d)#add device to the current list
+                        lock.release()
+                        foundPreviously = True
+                        break
+        
+                #if not found before, add to both the current and all time BT device lists
+                if not foundPreviously:
+                    newDevice = phonePositionEstimate(name, addr, category, bluetoothModuleAddr)
+                    newDevice.updatePhonePosition() #connect to the phone and get its RSSI
+                    lock.acquire()
+                    currentBTdeviceList.append(newDevice) #add device to the current list
+                    lock.release()
+                    allBTdeviceList.append(currentBTdeviceList[-1])
+          
+                         
 def rosSpin():
     rospy.spin()
+
 
 def callbackVehiclePos(vehiclePos):
     if vehiclePosTopicType == 'nav_msgs/Odometry':
@@ -83,6 +150,7 @@ def callbackVehiclePos(vehiclePos):
         currentVehiclePosition[0] = vehiclePos.pose.position.x
         currentVehiclePosition[1] = vehiclePos.pose.position.y
         currentVehiclePosition[2] = vehiclePos.pose.position.z
+        
 
 rospy.init_node('phonePosEst', anonymous=True)
 
@@ -94,92 +162,51 @@ else:
     raise AssertionError('Vehicle postion message type not correct!')
     
 estPosPublisher = rospy.Publisher("phone_position", phone_pos_est, queue_size=10)
-threadRosSpin = threading.Thread(target=rosSpin)
-threadRosSpin.start()
 estPhonePosMsg = phone_pos_est()
-
 loopRate = rospy.Rate(loopFrequency)
 
-currentBTdeviceList = []
-allBTdeviceList = []
-lastRSSITime = rospy.get_rostime() #stores the last time of getting RSSI value in float seconds.
+threadRosSpin = threading.Thread(name='rosSpin', target=rosSpin)
+threadRosSpin.start()
 
-major_classes = ( "Miscellaneous", 
-                  "Computer", 
-                  "Phone", 
-                  "LAN/Network Access point", 
-                  "Audio/Video", 
-                  "Peripheral", 
-                  "Imaging" )
-
-devID = bluetooth._bluetooth.hci_devid(bluetoothModuleAddr)
+lock = threading.Lock() #use lock to prevent changing the currentBTdeviceList at the same time
+threadDeviceDiscovery = threading.Thread(name='discovery', target=deviceDiscovery, args=(lock,))
+threadDeviceDiscovery.start()
 
 while not rospy.is_shutdown():
-    #Search when there's currently no bluetooth devices
-    if len(currentBTdeviceList) == 0:
-        nearby_devices = bluetooth.discover_devices(
-            duration=durationOfDiscoveryStep, lookup_names=True, flush_cache=True, 
-            lookup_class=True, device_id = devID)
-        
-        #add devices found to the current device list
-        for addr, name, device_class in nearby_devices:
-#             rospy.loginfo('discovered:')
-#             rospy.loginfo(name)
-            major_class = (device_class >> 8) & 0xf
-            if major_class < 7:
-                category = major_classes[major_class]
-            else:
-                category = "Uncategorized"            
-            
-            #check whether that device was found before:
-            #if was found before, just add the corresponding pos estimation object
-            #back to the current list
-            foundPreviously = False
-            #for i in range(len(allBTdeviceList)):
-            for d in allBTdeviceList:
-                if d.BTaddress == addr:
-                    d.btrssi = BluetoothRSSI(addr, bluetoothModuleAddr) #restart getting RSSI
-                    currentBTdeviceList.append(d)
-                    foundPreviously = True
-                    break
-
-
-            #if not found before, add to both the current and all time BT device lists
-            if not foundPreviously:
-                currentBTdeviceList.append(
-                    phonePositionEstimate(name, addr, category, bluetoothModuleAddr))  
-                allBTdeviceList.append(currentBTdeviceList[-1])
-
-    else:
-        #have BT devices:
-
+    
+    if len(currentBTdeviceList) != 0:
         #get the RSSI value of devices on the list
+        
+        lock.acquire()
         for device in currentBTdeviceList:
             #if successfully got the RSSI, update last successful time
             if device.updatePhonePosition():
-                lastRSSITime = rospy.get_rostime()
+                device.lastRSSITime = rospy.get_rostime()
                 
             estPhonePosMsg.header.stamp = rospy.get_rostime()
             estPhonePosMsg.name = device.BTname
             estPhonePosMsg.address = device.BTaddress
             estPhonePosMsg.category = device.BTclass
-            estPhonePosMsg.est_posx = device.cumPos[0]/device.dataNum
-            estPhonePosMsg.est_posy = device.cumPos[1]/device.dataNum
-            estPhonePosMsg.est_posz = device.cumPos[2]/device.dataNum
+            if not device.dataNum == 0:
+                estPhonePosMsg.est_posx = device.cumPos[0]/device.dataNum
+                estPhonePosMsg.est_posy = device.cumPos[1]/device.dataNum
+                estPhonePosMsg.est_posz = device.cumPos[2]/device.dataNum
+            else:
+                estPhonePosMsg.est_posx = device.cumPos[0]
+                estPhonePosMsg.est_posy = device.cumPos[1]
+                estPhonePosMsg.est_posz = device.cumPos[2]
             estPhonePosMsg.rssi_status = device.statusRSSI
             estPhonePosMsg.rssi = device.currentRSSI
             estPhonePosMsg.maxrssi =  device.maxRSSI
-            
-#             rospy.loginfo(estPhonePosMsg.name)
-#             rospy.loginfo(estPhonePosMsg.rssi)
-            
+
             estPosPublisher.publish(estPhonePosMsg)
             
-
-        if (rospy.get_rostime()-lastRSSITime) > rospy.Duration(noDeviceTimeout):
-            #haven't heard from the devices...
-            currentBTdeviceList = [] 
-
+            #if haven't heard from the devices for > noDeviceTimeout, remove from current list
+            if (rospy.get_rostime()-device.lastRSSITime) > rospy.Duration(noDeviceTimeout):
+                currentBTdeviceList.remove(device)  
+        lock.release()
             
     #keep the RSSI inquiry frequency at the desired value
     loopRate.sleep()
+
+threadDeviceDiscovery.join()
