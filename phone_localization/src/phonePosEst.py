@@ -9,6 +9,8 @@ from bt_proximity import BluetoothRSSI
 from phone_localization.msg import phone_pos_est
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Point
+from visualization_msgs.msg import Marker
 
 vehiclePosTopicType = rospy.get_param('vehicle_pos_topic_type')
 vehiclePosTopicName = rospy.get_param('vehicle_pos_topic_name')
@@ -150,8 +152,26 @@ def callbackVehiclePos(vehiclePos):
         currentVehiclePosition[0] = vehiclePos.pose.position.x
         currentVehiclePosition[1] = vehiclePos.pose.position.y
         currentVehiclePosition[2] = vehiclePos.pose.position.z
-        
-
+       
+def publisherPhonePosMarker(posx, posy, posz):
+    estPhonePosMarker.header.stamp = rospy.get_rostime()
+    estPhonePosMarker.header.frame_id = "/my_frame"
+    estPhonePosMarker.ns = 'bluetooth_phone_localization'
+    estPhonePosMarker.action = estPhonePosMarker.ADD
+    estPhonePosMarker.pose.orientation.w = 1.0
+    estPhonePosMarker.id = 0
+    estPhonePosMarker.type = estPhonePosMarker.POINTS
+    estPhonePosMarker.scale.x = 0.1
+    estPhonePosMarker.scale.y = 0.1
+    estPhonePosMarker.color.g = 1.0
+    estPhonePosMarker.color.a = 1.0
+    
+    markerPos.x = estPhonePosMsg.est_posx
+    markerPos.y = estPhonePosMsg.est_posy
+    markerPos.z = estPhonePosMsg.est_posz
+    estPhonePosMarker.points.append(markerPos)
+    estPosMarkerPublisher.publish(estPhonePosMarker)
+    
 rospy.init_node('phonePosEst', anonymous=True)
 
 if vehiclePosTopicType == 'nav_msgs/Odometry':
@@ -163,6 +183,11 @@ else:
     
 estPosPublisher = rospy.Publisher("phone_position", phone_pos_est, queue_size=10)
 estPhonePosMsg = phone_pos_est()
+
+estPosMarkerPublisher = rospy.Publisher("phone_marker", Marker, queue_size = 10)
+estPhonePosMarker = Marker()
+markerPos = Point() 
+
 loopRate = rospy.Rate(loopFrequency)
 
 threadRosSpin = threading.Thread(name='rosSpin', target=rosSpin)
@@ -200,6 +225,8 @@ while not rospy.is_shutdown():
             estPhonePosMsg.maxrssi =  device.maxRSSI
 
             estPosPublisher.publish(estPhonePosMsg)
+            
+            publisherPhonePosMarker(estPhonePosMsg.est_posx, estPhonePosMsg.est_posy, estPhonePosMsg.est_posz)
             
             #if haven't heard from the devices for > noDeviceTimeout, remove from current list
             if (rospy.get_rostime()-device.lastRSSITime) > rospy.Duration(noDeviceTimeout):
