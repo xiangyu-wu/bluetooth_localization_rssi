@@ -240,6 +240,8 @@ while not rospy.is_shutdown():
             #if haven't heard from the devices for > noDeviceTimeout, remove from current list
             if (rospy.get_rostime()-device.lastRSSITime) > rospy.Duration(noDeviceTimeout):
                 currentBTdeviceList.remove(device)  
+                device.btrssi.closeSock() #close the hci socket for getting RSSI
+                
         lock.release()
             
     #keep the RSSI inquiry frequency at the desired value

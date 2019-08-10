@@ -32,6 +32,9 @@ class BluetoothRSSI(object):
         """Connects to the Bluetooth address"""
         self.bt_sock.connect_ex((self.addr, 1))  # PSM 1 - Service Discovery
         self.connected = True
+        
+    def closeSock(self):
+        self.hci_sock.close()
 
     def get_rssi(self):
         """Gets the current RSSI value.
