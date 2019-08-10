@@ -22,7 +22,7 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 bluetoothModuleAddr = "5C:F3:70:8A:38:B6" #the addrees of the bluetooth module to be used
 loopFrequency = 50 #[Hz] the frequency of the loop
 noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
-durationOfDiscoveryStep = 5  #[s] time for searching BT devices
+durationOfDiscoveryStep = 5  #durationOfDiscoveryStep* 1.28[s] time for searching BT devices
 ######################################################################
 ######################################################################
 
@@ -96,12 +96,19 @@ def deviceDiscovery(lock):
             lookup_class=True, device_id = devID)
         
         #add devices found to the current device list
+        print('-------------------------------------')
+        print('discovered:')
         for addr, name, device_class in nearby_devices:
+            print(name)
             major_class = (device_class >> 8) & 0xf
             if major_class < 7:
                 category = major_classes[major_class]
             else:
                 category = "Uncategorized"    
+                
+            #ignore the device if it's not a phone
+            if category != "Phone":
+                continue
                 
             #check if device found already in the current device list
             inCurrentList = False
@@ -155,21 +162,24 @@ def callbackVehiclePos(vehiclePos):
        
 def publisherPhonePosMarker(posx, posy, posz):
     estPhonePosMarker.header.stamp = rospy.get_rostime()
-    estPhonePosMarker.header.frame_id = "/my_frame"
+    estPhonePosMarker.header.frame_id = "/world"
     estPhonePosMarker.ns = 'bluetooth_phone_localization'
     estPhonePosMarker.action = estPhonePosMarker.ADD
-    estPhonePosMarker.pose.orientation.w = 1.0
     estPhonePosMarker.id = 0
-    estPhonePosMarker.type = estPhonePosMarker.POINTS
-    estPhonePosMarker.scale.x = 0.1
-    estPhonePosMarker.scale.y = 0.1
+    estPhonePosMarker.type = estPhonePosMarker.SPHERE
+    
+    estPhonePosMarker.pose.position.x = posx
+    estPhonePosMarker.pose.position.y = posy
+    estPhonePosMarker.pose.position.z = posz
+    estPhonePosMarker.pose.orientation.w = 1.0
+
+    
+    estPhonePosMarker.scale.x = 0.5
+    estPhonePosMarker.scale.y = 0.5
+    estPhonePosMarker.scale.z = 0.5
     estPhonePosMarker.color.g = 1.0
     estPhonePosMarker.color.a = 1.0
     
-    markerPos.x = estPhonePosMsg.est_posx
-    markerPos.y = estPhonePosMsg.est_posy
-    markerPos.z = estPhonePosMsg.est_posz
-    estPhonePosMarker.points.append(markerPos)
     estPosMarkerPublisher.publish(estPhonePosMarker)
     
 rospy.init_node('phonePosEst', anonymous=True)
@@ -186,7 +196,6 @@ estPhonePosMsg = phone_pos_est()
 
 estPosMarkerPublisher = rospy.Publisher("phone_marker", Marker, queue_size = 10)
 estPhonePosMarker = Marker()
-markerPos = Point() 
 
 loopRate = rospy.Rate(loopFrequency)
 
