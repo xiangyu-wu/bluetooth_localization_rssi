@@ -174,9 +174,9 @@ def publisherPhonePosMarker(posx, posy, posz):
     estPhonePosMarker.pose.orientation.w = 1.0
 
     
-    estPhonePosMarker.scale.x = 0.5
-    estPhonePosMarker.scale.y = 0.5
-    estPhonePosMarker.scale.z = 0.5
+    estPhonePosMarker.scale.x = 0.2
+    estPhonePosMarker.scale.y = 0.2
+    estPhonePosMarker.scale.z = 0.2
     estPhonePosMarker.color.g = 1.0
     estPhonePosMarker.color.a = 1.0
     
@@ -227,18 +227,16 @@ while not rospy.is_shutdown():
                 estPhonePosMsg.est_posx = device.cumPos[0]/device.dataNum
                 estPhonePosMsg.est_posy = device.cumPos[1]/device.dataNum
                 estPhonePosMsg.est_posz = device.cumPos[2]/device.dataNum
-            else:
-                estPhonePosMsg.est_posx = device.cumPos[0]
-                estPhonePosMsg.est_posy = device.cumPos[1]
-                estPhonePosMsg.est_posz = device.cumPos[2]
+            else: #if there's no position estimate data, output default: (0,0,0)
+                estPhonePosMsg.est_posx = 0
+                estPhonePosMsg.est_posy = 0
+                estPhonePosMsg.est_posz = 0
             estPhonePosMsg.rssi_status = device.statusRSSI
             estPhonePosMsg.rssi = device.currentRSSI
             estPhonePosMsg.maxrssi =  device.maxRSSI
 
             estPosPublisher.publish(estPhonePosMsg)
-            
-            publisherPhonePosMarker(estPhonePosMsg.est_posx, estPhonePosMsg.est_posy, estPhonePosMsg.est_posz)
-            
+
             #if haven't heard from the devices for > noDeviceTimeout, remove from current list
             if (rospy.get_rostime()-device.lastRSSITime) > rospy.Duration(noDeviceTimeout):
                 currentBTdeviceListTemp.remove(device)  
@@ -246,6 +244,17 @@ while not rospy.is_shutdown():
         lock.acquire()
         currentBTdeviceList = currentBTdeviceListTemp
         lock.release()
+       
+    #publish the estimated position of phones
+    lock.acquire()
+    allBTdeviceListTemp = allBTdeviceList
+    lock.release()
+    for device in allBTdeviceListTemp:
+        if not device.dataNum == 0:
+            publisherPhonePosMarker(device.cumPos[0]/device.dataNum, device.cumPos[1]/device.dataNum, device.cumPos[2]/device.dataNum)
+        else:
+            #if there is no position data yet, publish estimated position to be (0,0,0)
+            publisherPhonePosMarker(0, 0, 0)
             
     #keep the RSSI inquiry frequency at the desired value
     loopRate.sleep()
