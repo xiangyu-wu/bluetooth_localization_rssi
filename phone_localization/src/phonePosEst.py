@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import numpy as np
 import rospy
 import threading
@@ -19,12 +20,14 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
 ######################################################################
 ######################################################################
-bluetoothModuleAddr = "5C:F3:70:8A:38:B6" #the addrees of the bluetooth module to be used
 loopFrequency = 50 #[Hz] the frequency of the loop
 noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 2  #durationOfDiscoveryStep* 1.28[s] time for searching BT devices
 ######################################################################
 ######################################################################
+
+#here the address is the NUC's bluetoothaddress, power it off
+os.system("echo 'select F8:94:C2:5C:07:A5\npower off\nquit' | bluetoothctl") 
 
 currentBTdeviceList = []
 allBTdeviceList = []
@@ -35,9 +38,6 @@ major_classes = ( "Miscellaneous",
                   "Audio/Video", 
                   "Peripheral", 
                   "Imaging" )
-
-devID = bluetooth._bluetooth.hci_devid(bluetoothModuleAddr)
-
 
 class phonePositionEstimate:
     def __init__(self, BTname, BTaddress, BTclass):
@@ -93,7 +93,7 @@ def deviceDiscovery(lock):
         #Search nearby bluetooth devices
         nearby_devices = bluetooth.discover_devices(
             duration=durationOfDiscoveryStep, lookup_names=True, flush_cache=True, 
-            lookup_class=True, device_id = devID)
+            lookup_class=True)
         
         #add devices found to the current device list
         print('-------------------------------------')
