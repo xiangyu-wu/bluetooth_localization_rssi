@@ -19,7 +19,7 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
 ######################################################################
 ######################################################################
-bluetoothModuleAddr = "A0:C5:89:0D:5D:71" #the addrees of the bluetooth module to be used
+bluetoothModuleAddr = "5C:F3:70:8A:38:B6" #the addrees of the bluetooth module to be used
 loopFrequency = 50 #[Hz] the frequency of the loop
 noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 2  #durationOfDiscoveryStep* 1.28[s] time for searching BT devices
@@ -142,8 +142,8 @@ def deviceDiscovery(lock):
                     newDevice.updatePhonePosition() #connect to the phone and get its RSSI
                     lock.acquire()
                     currentBTdeviceList.append(newDevice) #add device to the current list
-                    lock.release()
                     allBTdeviceList.append(currentBTdeviceList[-1])
+                    lock.release()
           
                          
 def rosSpin():
@@ -160,12 +160,12 @@ def callbackVehiclePos(vehiclePos):
         currentVehiclePosition[1] = vehiclePos.pose.position.y
         currentVehiclePosition[2] = vehiclePos.pose.position.z
        
-def publisherPhonePosMarker(posx, posy, posz):
+def publisherPhonePosMarker(posx, posy, posz,  markerID):
     estPhonePosMarker.header.stamp = rospy.get_rostime()
     estPhonePosMarker.header.frame_id = "/world"
     estPhonePosMarker.ns = 'bluetooth_phone_localization'
     estPhonePosMarker.action = estPhonePosMarker.ADD
-    estPhonePosMarker.id = 0
+    estPhonePosMarker.id = markerID
     estPhonePosMarker.type = estPhonePosMarker.SPHERE
     
     estPhonePosMarker.pose.position.x = posx
@@ -174,9 +174,9 @@ def publisherPhonePosMarker(posx, posy, posz):
     estPhonePosMarker.pose.orientation.w = 1.0
 
     
-    estPhonePosMarker.scale.x = 0.2
-    estPhonePosMarker.scale.y = 0.2
-    estPhonePosMarker.scale.z = 0.2
+    estPhonePosMarker.scale.x = 0.5
+    estPhonePosMarker.scale.y = 0.5
+    estPhonePosMarker.scale.z = 0.5
     estPhonePosMarker.color.g = 1.0
     estPhonePosMarker.color.a = 1.0
     
@@ -249,12 +249,14 @@ while not rospy.is_shutdown():
     lock.acquire()
     allBTdeviceListTemp = allBTdeviceList
     lock.release()
+    markerID = 0
     for device in allBTdeviceListTemp:
+        markerID +=1
         if not device.dataNum == 0:
-            publisherPhonePosMarker(device.cumPos[0]/device.dataNum, device.cumPos[1]/device.dataNum, device.cumPos[2]/device.dataNum)
+            publisherPhonePosMarker(device.cumPos[0]/device.dataNum, device.cumPos[1]/device.dataNum, device.cumPos[2]/device.dataNum, markerID)
         else:
             #if there is no position data yet, publish estimated position to be (0,0,0)
-            publisherPhonePosMarker(0, 0, 0)
+            publisherPhonePosMarker(0, 0, 0, markerID)
             
     #keep the RSSI inquiry frequency at the desired value
     loopRate.sleep()
