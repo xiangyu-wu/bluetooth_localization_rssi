@@ -9,10 +9,9 @@ class BluetoothRSSI(object):
     """Object class for getting the RSSI value of a Bluetooth address.
     Reference: https://github.com/dagar/bluetooth-proximity
     """
-    def __init__(self, addr, btModuleAddr):
+    def __init__(self, addr):
         self.addr = addr
-        self.devID = bt.hci_devid(btModuleAddr)
-        self.hci_sock = bt.hci_open_dev(self.devID)
+        self.hci_sock = bt.hci_open_dev()
         self.hci_fd = self.hci_sock.fileno()
         self.bt_sock = bluetooth.BluetoothSocket(bluetooth.L2CAP)
         self.bt_sock.settimeout(5)

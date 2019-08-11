@@ -19,7 +19,7 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 
 ######################################################################
 ######################################################################
-bluetoothModuleAddr = "5C:F3:70:8A:38:B6" #the addrees of the bluetooth module to be used
+bluetoothModuleAddr = "A0:C5:89:0D:5D:71" #the addrees of the bluetooth module to be used
 loopFrequency = 50 #[Hz] the frequency of the loop
 noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 2  #durationOfDiscoveryStep* 1.28[s] time for searching BT devices
@@ -40,7 +40,7 @@ devID = bluetooth._bluetooth.hci_devid(bluetoothModuleAddr)
 
 
 class phonePositionEstimate:
-    def __init__(self, BTname, BTaddress, BTclass, btModuleAddr):
+    def __init__(self, BTname, BTaddress, BTclass):
         #info about estimated phone position
         self.cumPos = np.array([0.0, 0.0, 0.0], dtype=np.float32)
         self.maxRSSI = -np.inf
@@ -55,7 +55,7 @@ class phonePositionEstimate:
         self.BTclass = BTclass
         
         #the object for getting RSSI value of a bluetooth device
-        self.btrssi = BluetoothRSSI(BTaddress, btModuleAddr)
+        self.btrssi = BluetoothRSSI(BTaddress)
         
     def updatePhonePosition(self):
         #get the current RSSI of BT device
@@ -127,7 +127,7 @@ def deviceDiscovery(lock):
                 
                 for d in allBTdeviceList:
                     if d.BTaddress == addr:
-                        d.btrssi = BluetoothRSSI(addr, bluetoothModuleAddr) #restart getting RSSI
+                        d.btrssi = BluetoothRSSI(addr) #restart getting RSSI
                         d.lastRSSITime = rospy.get_rostime() 
                         d.updatePhonePosition() #reconnect to the phone and get its RSSI
                         lock.acquire()
@@ -138,7 +138,7 @@ def deviceDiscovery(lock):
         
                 #if not found before, add to both the current and all time BT device lists
                 if not foundPreviously:
-                    newDevice = phonePositionEstimate(name, addr, category, bluetoothModuleAddr)
+                    newDevice = phonePositionEstimate(name, addr, category)
                     newDevice.updatePhonePosition() #connect to the phone and get its RSSI
                     lock.acquire()
                     currentBTdeviceList.append(newDevice) #add device to the current list
@@ -212,7 +212,9 @@ while not rospy.is_shutdown():
         #get the RSSI value of devices on the list
         
         lock.acquire()
-        for device in currentBTdeviceList:
+        currentBTdeviceListTemp = currentBTdeviceList
+        lock.release()
+        for device in currentBTdeviceListTemp:
             #if successfully got the RSSI, update last successful time
             if device.updatePhonePosition():
                 device.lastRSSITime = rospy.get_rostime()
@@ -239,9 +241,10 @@ while not rospy.is_shutdown():
             
             #if haven't heard from the devices for > noDeviceTimeout, remove from current list
             if (rospy.get_rostime()-device.lastRSSITime) > rospy.Duration(noDeviceTimeout):
-                currentBTdeviceList.remove(device)  
+                currentBTdeviceListTemp.remove(device)  
                 device.btrssi.closeSock() #close the hci socket for getting RSSI
-                
+        lock.acquire()
+        currentBTdeviceList = currentBTdeviceListTemp
         lock.release()
             
     #keep the RSSI inquiry frequency at the desired value
