@@ -23,11 +23,11 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 loopFrequency = 50 #[Hz] the frequency of the loop
 noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 2  #durationOfDiscoveryStep* 1.28[s] time for searching BT devices
+durationDeviceLost = 30.0 #[s]
+#CHANGE THE ADDRESS: here the address is the NUC's bluetoothaddress, power it off
+os.system("echo 'select A0:C5:89:0D:5D:71\npower off\nquit' | bluetoothctl") 
 ######################################################################
 ######################################################################
-
-#here the address is the NUC's bluetoothaddress, power it off
-os.system("echo 'select F8:94:C2:5C:07:A5\npower off\nquit' | bluetoothctl") 
 
 currentBTdeviceList = []
 allBTdeviceList = []
@@ -48,6 +48,7 @@ class phonePositionEstimate:
         self.currentRSSI = -np.inf
         self.dataNum = 0
         self.lastRSSITime = rospy.get_rostime()
+        self.reported = False
         
         #some properties about the bluetooth device
         self.BTname = BTname
@@ -181,6 +182,20 @@ def publisherPhonePosMarker(posx, posy, posz,  markerID):
     estPhonePosMarker.color.a = 1.0
     
     estPosMarkerPublisher.publish(estPhonePosMarker)
+
+
+def reportPhone(device):
+    estPhoneReportPosMsg.header.stamp = rospy.get_rostime()
+    estPhoneReportPosMsg.name = device.BTname
+    estPhoneReportPosMsg.address = device.BTaddress
+    estPhoneReportPosMsg.category = device.BTclass
+    estPhoneReportPosMsg.est_posx = device.cumPos[0]/device.dataNum
+    estPhoneReportPosMsg.est_posy = device.cumPos[1]/device.dataNum
+    estPhoneReportPosMsg.est_posz = device.cumPos[2]/device.dataNum
+    estPhoneReportPosMsg.rssi_status = device.statusRSSI
+    estPhoneReportPosMsg.rssi = device.currentRSSI
+    estPhoneReportPosMsg.maxrssi =  device.maxRSSI
+    estPosReportPublisher.publish(estPhoneReportPosMsg)
     
 rospy.init_node('phonePosEst', anonymous=True)
 
@@ -193,6 +208,9 @@ else:
     
 estPosPublisher = rospy.Publisher("phone_position", phone_pos_est, queue_size=10)
 estPhonePosMsg = phone_pos_est()
+
+estPosReportPublisher = rospy.Publisher("bluetooth_phone_report", phone_pos_est, queue_size=10)
+estPhoneReportPosMsg = phone_pos_est()
 
 estPosMarkerPublisher = rospy.Publisher("phone_marker", Marker, queue_size = 10)
 estPhonePosMarker = Marker()
@@ -245,12 +263,17 @@ while not rospy.is_shutdown():
         currentBTdeviceList = currentBTdeviceListTemp
         lock.release()
        
-    #publish the estimated position of phones
     lock.acquire()
     allBTdeviceListTemp = allBTdeviceList
     lock.release()
     markerID = 0
     for device in allBTdeviceListTemp:
+        #report the device:
+        if (rospy.get_rostime()-device.lastRSSITime)>rospy.Duration(durationDeviceLost) and device.reported==False and device.maxRSSI>=0:
+            reportPhone(device)
+            device.reported = True
+
+        #publish the estimated position of phones as markers:
         markerID +=1
         if not device.dataNum == 0:
             publisherPhonePosMarker(device.cumPos[0]/device.dataNum, device.cumPos[1]/device.dataNum, device.cumPos[2]/device.dataNum, markerID)
