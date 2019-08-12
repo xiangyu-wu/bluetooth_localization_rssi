@@ -23,9 +23,13 @@ currentVehiclePosition = np.array([0.0, 0.0, 0.0], dtype=np.float32)
 loopFrequency = 50 #[Hz] the frequency of the loop
 noDeviceTimeout = 1.0 #[s] time threshold for foggetting a bluetooth device
 durationOfDiscoveryStep = 2  #durationOfDiscoveryStep* 1.28[s] time for searching BT devices
-durationDeviceLost = 30.0 #[s]
+#After not getting signal for durationDeviceLost time, report that device
+durationDeviceLost = 20.0 #[s]
+#the minimum value of maxRSSI of a device for it to be reported, for avoiding large estimation error
+rssiThreshold = -3 
 #CHANGE THE ADDRESS: here the address is the NUC's bluetoothaddress, power it off
-os.system("echo 'select A0:C5:89:0D:5D:71\npower off\nquit' | bluetoothctl") 
+os.system("echo 'select 94:65:2D:22:5F:4C\npower off\nquit' | bluetoothctl") 
+markerSize = 0.2 #[m] the size of estimated phone marker
 ######################################################################
 ######################################################################
 
@@ -175,9 +179,9 @@ def publisherPhonePosMarker(posx, posy, posz,  markerID):
     estPhonePosMarker.pose.orientation.w = 1.0
 
     
-    estPhonePosMarker.scale.x = 0.5
-    estPhonePosMarker.scale.y = 0.5
-    estPhonePosMarker.scale.z = 0.5
+    estPhonePosMarker.scale.x = markerSize
+    estPhonePosMarker.scale.y = markerSize
+    estPhonePosMarker.scale.z = markerSize
     estPhonePosMarker.color.g = 1.0
     estPhonePosMarker.color.a = 1.0
     
@@ -269,7 +273,7 @@ while not rospy.is_shutdown():
     markerID = 0
     for device in allBTdeviceListTemp:
         #report the device:
-        if (rospy.get_rostime()-device.lastRSSITime)>rospy.Duration(durationDeviceLost) and device.reported==False and device.maxRSSI>=0:
+        if (rospy.get_rostime()-device.lastRSSITime)>rospy.Duration(durationDeviceLost) and device.reported==False and device.maxRSSI>=rssiThreshold:
             reportPhone(device)
             device.reported = True
 
