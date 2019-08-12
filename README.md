@@ -40,8 +40,8 @@ Make the python script executable by:
 
 # 6-set parameters and compile the codes
 Power off the bluetooth module on the NUC to make sure the package uses the usb bluetooth dongle. 
-Before you plug in the bluetooth dongle, get the address of the NUC's bluetooth modules using `bluetoothctl`. The address(e.g. 94:65:2D:22:5F:4C) is a unique identifier of a bluetooth module, and it won't change.
-In phonePosEst.py, change the bluetooth module address in the command "echo 'select 94:65:2D:22:5F:4C\npower off\nquit' | bluetoothctl" to the bluetooth module of your NUC to power if off. Don't change the format of this command(e.g. don't add or delete space in it).
+Before you plug in the bluetooth dongle, get the address of the NUC's bluetooth modules using `bluetoothctl`. The address (e.g. 94:65:2D:22:5F:4C) is a unique identifier of a bluetooth module, and it won't change.
+In phonePosEst.py, change the bluetooth module address in the command **"echo 'select 94:65:2D:22:5F:4C\npower off\nquit' | bluetoothctl"** to the bluetooth module of your NUC to power if off. Don't change the format of this command(e.g. don't add or delete space in it).
 
 Plug the [Plugable bluetooth dongle](https://www.amazon.com/Plugable-Bluetooth-Adapter-Raspberry-Compatible/dp/B009ZIILLI/) to the NUC. You don't need to specify the address of the usb bluetooth dongle.
 
