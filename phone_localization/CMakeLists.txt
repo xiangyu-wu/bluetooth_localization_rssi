@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   nav_msgs
+  sensor_msgs
   geometry_msgs
   visualization_msgs
   message_generation
@@ -54,6 +55,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    phone_pos_est.msg
+   filtered_art.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -75,6 +77,7 @@ find_package(catkin REQUIRED COMPONENTS
    DEPENDENCIES
    std_msgs
    nav_msgs
+   sensor_msgs
    geometry_msgs
    visualization_msgs
  )

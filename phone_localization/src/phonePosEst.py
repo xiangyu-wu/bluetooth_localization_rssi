@@ -2,12 +2,15 @@
 
 import os
 import numpy as np
-import rospy
 import threading
-import bluetooth
 import select
+import rospy
+
+import bluetooth
 from bt_proximity import BluetoothRSSI
+
 from phone_localization.msg import phone_pos_est
+from phone_localization.msg import filtered_art
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Point
@@ -28,7 +31,7 @@ durationDeviceLost = 20.0 #[s]
 #the minimum value of maxRSSI of a device for it to be reported, for avoiding large estimation error
 rssiThreshold = -3 
 #CHANGE THE ADDRESS: here the address is the NUC's bluetoothaddress, power it off
-os.system("echo 'select 94:65:2D:22:5F:4C\npower off\nquit' | bluetoothctl") 
+os.system("echo 'select A0:C5:89:0D:5D:71\npower off\nquit' | bluetoothctl") 
 markerSize = 0.2 #[m] the size of estimated phone marker
 ######################################################################
 ######################################################################
@@ -189,16 +192,12 @@ def publisherPhonePosMarker(posx, posy, posz,  markerID):
 
 
 def reportPhone(device):
-    estPhoneReportPosMsg.header.stamp = rospy.get_rostime()
-    estPhoneReportPosMsg.name = device.BTname
-    estPhoneReportPosMsg.address = device.BTaddress
-    estPhoneReportPosMsg.category = device.BTclass
-    estPhoneReportPosMsg.est_posx = device.cumPos[0]/device.dataNum
-    estPhoneReportPosMsg.est_posy = device.cumPos[1]/device.dataNum
-    estPhoneReportPosMsg.est_posz = device.cumPos[2]/device.dataNum
-    estPhoneReportPosMsg.rssi_status = device.statusRSSI
-    estPhoneReportPosMsg.rssi = device.currentRSSI
-    estPhoneReportPosMsg.maxrssi =  device.maxRSSI
+    estPhoneReportPosMsg.point.header.stamp = rospy.get_rostime()
+    estPhoneReportPosMsg.point.header.frame_id = "/world"
+    estPhoneReportPosMsg.point.point.x = device.cumPos[0]/device.dataNum
+    estPhoneReportPosMsg.point.point.y = device.cumPos[1]/device.dataNum
+    estPhoneReportPosMsg.point.point.z = device.cumPos[2]/device.dataNum
+    estPhoneReportPosMsg.class_label.data = device.BTclass+'(bluetooth)'
     estPosReportPublisher.publish(estPhoneReportPosMsg)
     
 rospy.init_node('phonePosEst', anonymous=True)
@@ -213,8 +212,8 @@ else:
 estPosPublisher = rospy.Publisher("phone_position", phone_pos_est, queue_size=10)
 estPhonePosMsg = phone_pos_est()
 
-estPosReportPublisher = rospy.Publisher("bluetooth_phone_report", phone_pos_est, queue_size=10)
-estPhoneReportPosMsg = phone_pos_est()
+estPosReportPublisher = rospy.Publisher("bluetooth_phone_report", filtered_art, queue_size=10)
+estPhoneReportPosMsg = filtered_art()
 
 estPosMarkerPublisher = rospy.Publisher("phone_marker", Marker, queue_size = 10)
 estPhonePosMarker = Marker()
