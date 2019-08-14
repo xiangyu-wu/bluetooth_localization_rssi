@@ -30,9 +30,12 @@ durationOfDiscoveryStep = 2  #durationOfDiscoveryStep* 1.28[s] time for searchin
 durationDeviceLost = 20.0 #[s]
 #the minimum value of maxRSSI of a device for it to be reported, for avoiding large estimation error
 rssiThreshold = -3 
+
 #CHANGE THE ADDRESS: here the address is the NUC's bluetoothaddress, power it off
 os.system("echo 'select A0:C5:89:0D:5D:71\npower off\nquit' | bluetoothctl") 
 markerSize = 0.2 #[m] the size of estimated phone marker
+#blacklist for phones to be ignored(non-DARPA phones)
+phoneBlacklist = ["OnePlus 3T", "Essential Phone"] 
 ######################################################################
 ######################################################################
 
@@ -114,10 +117,17 @@ def deviceDiscovery(lock):
             else:
                 category = "Uncategorized"    
                 
-            #ignore the device if it's not a phone
-            if category != "Phone":
-                continue
+            #check if a device is in black list
+            inBlackList = False
+            for blackName in phoneBlacklist:
+                if blackName == name:
+                    inBlackList = True
+                    break;
                 
+            #ignore the device if it's not a phone or in black list
+            if category != "Phone" or inBlackList:
+                continue
+   
             #check if device found already in the current device list
             inCurrentList = False
             lock.acquire()
