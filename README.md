@@ -7,7 +7,7 @@ The package does device discovery and getting the RSSI value of the device at th
 
 It publishes three topics: /phone_position, /bluetooth_phone_report and /phone_marker. 
 * The /phone_position publishes information about discovered bluetooth devices: address, name, category, estimated position, rssi value and maximum rssi value. 
-* The /bluetooth_phone_report topic has the same topic type as /phone_position (a custom type: phone_pos_est), it reports the estimated postion of a phone if: 
+* The /bluetooth_phone_report topic is of message type filtered_art.msg, it reports the estimated postion of a phone if: 
   * (1) the maximum rssi value of that device is above a threshold, which prevents reporting a phone that is always far away from the vehicle during flight and thus has large position estimation error. 
   * (2) the phone is not connected for 20 seconds, which makes sure that the vehicle is indeed already far away from the phone and all the possible data is gathered. the value is set to 20 because sometimes bluetooth connection to a phone is unstable and got lost for about 10 seconds.
   * (3) the phone is not reported before, which prevents repeated artifact report
@@ -49,6 +49,8 @@ In phonePosEst.py, change the bluetooth module address in the command **"echo 's
 Plug the [Plugable bluetooth dongle](https://www.amazon.com/Plugable-Bluetooth-Adapter-Raspberry-Compatible/dp/B009ZIILLI/) to the NUC. You don't need to specify the address of the usb bluetooth dongle.
 
 In addition, in phone_localization.launch, please change the parameter named **vehicle_pos_topic_type** to the type of the position estimation message of the vehicle, and also change the **vehicle_pos_topic_name** to the name of that topic.
+
+If you want the package to ignore some certain phones, you can add their bluetooth name to phoneBlacklist.
 
 Compile the code:
 * `cd ~/bluetooth_ws/`
